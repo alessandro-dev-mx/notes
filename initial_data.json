@@ -1,0 +1,33 @@
+[
+    {
+        "model": "note.category",
+        "pk": 1,
+        "fields": {
+            "name": "General",
+            "description": "Category for saving all notes that do not have a specific intention"
+        }
+    },
+    {
+        "model": "note.note",
+        "pk": 1,
+        "fields": {
+            "title": "Some good books to read!",
+            "content": "Let's read Milan Kundera",
+            "reminder": "2020-11-21T00:00:00+0000",
+            "created_date": "2020-11-16T00:00:00+0000",
+            "updated_date": "2020-11-16T00:00:00+0000"
+        }
+    },
+    {
+        "model": "note.note",
+        "pk": 2,
+        "fields": {
+            "title": "Need to get a new mouse...",
+            "content": "don't forget to get a new mouse...",
+            "reminder": "2020-11-22T09:30:00+0000",
+            "color": "Orange",
+            "created_date": "2020-11-16T00:00:00+0000",
+            "updated_date": "2020-11-16T00:00:00+0000"
+        }
+    }
+]
