@@ -1,4 +1,5 @@
 # Third party libs
+# from django.db import transaction
 from graphene import AbstractType, Boolean, DateTime, Field, InputObjectType, Int, Mutation, String
 from graphene_django import DjangoObjectType, DjangoListField
 from graphql import GraphQLError
@@ -23,12 +24,14 @@ class Query(object):
     notes = DjangoListField(NoteType)
     note = Field(NoteType, note_id=Int(), title=String())
 
+    @staticmethod
     def resolve_category(self, _, category_id=None, name=None):
         if category_id is not None:
             return Category.objects.get(pk=category_id)
         if name is not None:
             return Category.objects.get(name=name)
 
+    @staticmethod
     def resolve_note(self, _, note_id=None, title=None):
         if note_id is not None:
             return Note.objects.get(pk=note_id)
@@ -50,6 +53,7 @@ class UpsertCategory(Mutation):
     class Arguments:
         category_data = CategoryInput(required=True)
 
+    @staticmethod
     def mutate(self, _, category_data=None):
 
         # Get input data
@@ -62,7 +66,8 @@ class UpsertCategory(Mutation):
 
             # Loop thorugh all the given data and update the records
             for key, val in category_data.items():
-                setattr(category, key, val)
+                if key != 'name':
+                    setattr(category, key, val)
 
         # If we can't find an existing category then we'll need to create one...
         except Category.DoesNotExist:
@@ -76,6 +81,7 @@ class UpsertCategory(Mutation):
 
 class NoteInput(InputObjectType):
     title = String(required=True)
+    note_id = Int()
     content = String()
     note_type = String()
     category = String()
@@ -85,39 +91,87 @@ class NoteInput(InputObjectType):
     done = Boolean()
 
 
-class UpsertNote(Mutation):
-    """Creates or updates a note depending on wether the title of the
-    note is already registered or not...
+class AddNote(Mutation):
+    """Add a whole new note to the system
     """
     note = Field(NoteType)
 
     class Arguments:
         note_data = NoteInput(required=True)
 
-    def mutate(self, _, note_data=None):
-
+    @staticmethod
+    def mutate(self, _, note_data):
         # Get input data
         title = note_data.get('title')
+        note_id = note_data.get('note_id')
         content = note_data.get('content')
-        note_type = note_data.get('noteType')
+        note_type = note_data.get('note_type')
         category = note_data.get('category')
         color = note_data.get('color')
         pinned = note_data.get('pinned')
-        reminder = note_data.get('noteData')
+        reminder = note_data.get('reminder')
         done = note_data.get('done')
 
         # If category is given get its PK to use it when creating the note
         if not category:
-            category = 'General'
-        category_res = Category.objects.get(name=category)
-        if category_res:
-            category = category_res
-            note_data['category'] = category
+            category = Category.objects.get(pk=1)
+        else:
+            category = Category.objects.get(name=category)
 
         # When note type is not specified we can assume it is a normal note...
         if not note_type:
             note_type = 'Note'
-            note_data['noteType'] = note_type
+
+        # We usually don't want to have a note pinned to the top of the board...
+        if not pinned:
+            pinned = False
+
+        # Unless specified we should assume the note/task is not done...
+        if not done:
+            done = False
+
+        note = Note(title=title, content=content, note_type=note_type,
+                    category=category, color=color, pinned=pinned,
+                    reminder=reminder, done=done)
+
+        note.save()
+
+        return AddNote(note)
+
+
+class UpdateNote(Mutation):
+    """Updates a note with the given fields
+    """
+    note = Field(NoteType)
+
+    class Arguments:
+        note_data = NoteInput(required=True)
+
+    @staticmethod
+    def mutate(self, _, note_data):
+
+        # Get input data
+        title = note_data.get('title')
+        note_id = note_data.get('note_id')
+        content = note_data.get('content')
+        note_type = note_data.get('note_type')
+        category = note_data.get('category')
+        color = note_data.get('color')
+        pinned = note_data.get('pinned')
+        reminder = note_data.get('reminder')
+        done = note_data.get('done')
+
+        # If category is given get its PK to use it when creating the note
+        if not category:
+            category = Category.objects.get(pk=1)
+        else:
+            category = Category.objects.get(name=category)
+        note_data['category'] = category
+
+        # When note type is not specified we can assume it is a normal note...
+        if not note_type:
+            note_type = 'Note'
+            note_data['note_type'] = note_type
 
         # We usually don't want to have a note pinned to the top of the board...
         if not pinned:
@@ -129,28 +183,34 @@ class UpsertNote(Mutation):
             done = False
             note_data['done'] = done
 
-        # Check if the given title of the Note already exists
+        need_update = False
+
+        # Check if the given Note already exists
         try:
-            note = Note.objects.get(title=title)
-
-            # Loop thorugh all the given data and update the records
-            for key, val in note_data.items():
-                setattr(note, key, val)
-
-        # If we can't find an existing Note then we'll need to create one...
+            if note_id:
+                note = Note.objects.get(pk=note_id)
+                need_update = True
+            else:
+                raise Note.DoesNotExist
         except Note.DoesNotExist:
-            note = Note(title=title, content=content, note_type=note_type,
-                        category=category, color=color, pinned=pinned,
-                        reminder=reminder, done=done)
+            print('Non-existing Note ID provided')
+            raise
+
+        # Loop thorugh all the given data and update the records
+        for key, val in note_data.items():
+            if key not in ('title'):
+                setattr(note, key, val)
 
         # Save all changes done
         note.save()
 
-        return UpsertNote(note)
+        return UpdateNote(note)
 
 
 class MyMutation(AbstractType):
     """Main class containing all mutations required to create categories
     """
+    # upsert_note = UpsertNote.Field()
+    add_note = AddNote.Field()
+    update_note = UpdateNote.Field()
     upsert_category = UpsertCategory.Field()
-    upsert_note = UpsertNote.Field()
