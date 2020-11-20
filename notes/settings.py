@@ -60,7 +60,9 @@ ROOT_URLCONF = 'notes.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'notes-web-app/build')
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -130,3 +132,7 @@ STATIC_URL = '/static/'
 GRAPHENE = {
     'SCHEMA': 'notes.schema.schema'
 }
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'notes-web-app/build/static')
+]

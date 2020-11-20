@@ -1,6 +1,6 @@
 # Third party libs
 # from django.db import transaction
-from graphene import AbstractType, Boolean, DateTime, Field, InputObjectType, Int, Mutation, String
+from graphene import AbstractType, Boolean, DateTime, Field, InputObjectType, Int, List, Mutation, String
 from graphene_django import DjangoObjectType, DjangoListField
 from graphql import GraphQLError
 
@@ -19,10 +19,18 @@ class NoteType(DjangoObjectType):
 
 
 class Query(object):
-    categories = DjangoListField(CategoryType)
+    categories = List(CategoryType)
     category = Field(CategoryType, category_id=Int(), name=String())
-    notes = DjangoListField(NoteType)
+    notes = List(NoteType)
     note = Field(NoteType, note_id=Int(), title=String())
+
+    @staticmethod
+    def resolve_notes(self, _):
+        return Note.objects.all()
+
+    @staticmethod
+    def resolve_categories(self, _):
+        return Category.objects.all()
 
     @staticmethod
     def resolve_category(self, _, category_id=None, name=None):
@@ -71,7 +79,8 @@ class UpsertCategory(Mutation):
 
         # If we can't find an existing category then we'll need to create one...
         except Category.DoesNotExist:
-            category = Category(name=name, description=description)
+            category = Category.objects.create(
+                name=name, description=description)
 
         # Save all changes done
         category.save()
