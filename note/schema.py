@@ -19,6 +19,8 @@ class NoteType(DjangoObjectType):
 
 
 class Query(object):
+    """Defines queries to fetch specific or all objects from DB
+    """
     categories = List(CategoryType)
     category = Field(CategoryType, category_id=Int(), name=String())
     notes = List(NoteType)
@@ -62,7 +64,7 @@ class UpsertCategory(Mutation):
         category_data = CategoryInput(required=True)
 
     @staticmethod
-    def mutate(self, _, category_data=None):
+    def mutate(cls, _, category_data=None):
 
         # Get input data
         name = category_data.get('name')
@@ -109,7 +111,7 @@ class AddNote(Mutation):
         note_data = NoteInput(required=True)
 
     @staticmethod
-    def mutate(self, _, note_data):
+    def mutate(cls, _, note_data):
         # Get input data
         title = note_data.get('title')
         note_id = note_data.get('note_id')
@@ -157,7 +159,7 @@ class UpdateNote(Mutation):
         note_data = NoteInput(required=True)
 
     @staticmethod
-    def mutate(self, _, note_data):
+    def mutate(cls, _, note_data):
 
         # Get input data
         title = note_data.get('title')
@@ -216,10 +218,42 @@ class UpdateNote(Mutation):
         return UpdateNote(note)
 
 
+class DeleteNote(Mutation):
+    """Deletes notes based on the given ID (PK)
+    """
+    ok = Boolean()
+
+    class Arguments:
+        note_id = Int()
+
+    @classmethod
+    def mutate(cls, _, info, note_id):
+        note = Note.objects.get(pk=note_id)
+        note.delete()
+        return cls(ok=True)
+
+
+class DeleteCategory(Mutation):
+    """Deletes categories based on the given ID (PK)
+    """
+    ok = Boolean()
+
+    class Arguments:
+        category_id = Int()
+
+    @classmethod
+    def mutate(cls, _, info, category_id):
+        category = Category.objects.get(pk=category_id)
+        category.delete()
+        return cls(ok=True)
+
+
 class MyMutation(AbstractType):
     """Main class containing all mutations required to create categories
     """
     # upsert_note = UpsertNote.Field()
     add_note = AddNote.Field()
     update_note = UpdateNote.Field()
+    delete_note = DeleteNote.Field()
     upsert_category = UpsertCategory.Field()
+    delete_category = DeleteCategory.Field()
